@@ -903,6 +903,20 @@ if('xr' in navigator){
 // ════════════════════════════════════════════════
 function mkTex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c);}
 
+// roundRect polyfill for older browsers
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);
+    this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);
+    this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);this.closePath();
+    return this;
+  };
+}
+
+
+
 function floorTex(bg,gridCol,shimCol,style){
   return mkTex(512,512,(ctx,w,h)=>{
     // Base fill
@@ -1258,7 +1272,7 @@ groundM.map.wrapS=groundM.map.wrapT=THREE.RepeatWrapping;groundM.map.repeat.set(
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(300,300),groundM);ground.rotation.x=-Math.PI/2;ground.position.y=-2;ground.receiveShadow=true;worldGroup.add(ground);
 
 // ── City skyline ──
-(function buildSkyline(){
+try{(function buildSkyline(){
   const pal1=['#060315','rgba(255,220,100,.4)','rgba(120,180,255,.35)'];
   const bldgDefs=[
     [-60,16,4.5,20,12],[-48,22,5.2,28,14],[-36,12,3.5,16,9],[-24,18,4.8,22,13],[-12,10,3.2,13,8],
@@ -1272,11 +1286,11 @@ const ground=new THREE.Mesh(new THREE.PlaneGeometry(300,300),groundM);ground.rot
     const ne=new THREE.Mesh(new THREE.BoxGeometry(bw*.65,.06,.06),new THREE.MeshBasicMaterial({color:neonCols[Math.floor(Math.random()*5)]}));
     ne.position.set(bx,bh-2+.03,-54.6);worldGroup.add(ne);
   });
-})();
+})();}catch(e){console.error('Zone build error [buildSkyline]:',e);}
 
 // ── ZONE 0: BoomBox Plaza (center) ──
 const zones=[];
-(function buildPlaza(){
+try{(function buildPlaza(){
   const zg=new THREE.Group();zg.position.set(0,0,0);worldGroup.add(zg);
   // Stage platform
   const platM=new THREE.MeshStandardMaterial({color:0x14043c,roughness:.2,metalness:.65,emissive:0x1e0640,emissiveIntensity:.5});
@@ -1407,10 +1421,10 @@ const zones=[];
       crowdG.children.forEach(f=>{if(f.userData.fr)f.position.y+=Math.sin(t*f.userData.fr+f.userData.ph)*.004;});
     }
   };
-})();
+})();}catch(e){console.error('Zone build error [buildPlaza]:',e);}
 
 // ── ZONE 1: Graffiti Alley ──
-(function buildGraffitiAlley(){
+try{(function buildGraffitiAlley(){
   const zg=new THREE.Group();zg.position.set(-80,0,0);worldGroup.add(zg);
   // Narrow alley floor — wet concrete with puddle reflections
   const fm=new THREE.MeshStandardMaterial({map:floorTex('#181008','rgba(255,80,0,.22)','rgba(255,80,0,.06)','concrete'),roughness:.88,metalness:.08});
@@ -1461,10 +1475,10 @@ const zones=[];
       sg.intensity=3.5+Math.sin(t*1.8)*2;
     }
   };
-})();
+})();}catch(e){console.error('Zone build error [buildGraffitiAlley]:',e);}
 
 // ── ZONE 2: Battle Arena ──
-(function buildBattleArena(){
+try{(function buildBattleArena(){
   const zg=new THREE.Group();zg.position.set(80,0,0);worldGroup.add(zg);
   // Arena floor — glossy with inlaid logo
   const afm=new THREE.MeshStandardMaterial({map:floorTex('#060015','rgba(0,212,255,.22)','rgba(0,212,255,.06)','arena'),roughness:.12,metalness:.85,emissive:new THREE.Color(0x000820),emissiveIntensity:.45});
@@ -1520,10 +1534,10 @@ const zones=[];
       asg.intensity=4+Math.sin(t*.9)*2;
     }
   };
-})();
+})();}catch(e){console.error('Zone build error [buildBattleArena]:',e);}
 
 // ── ZONE 3: Producer Lab ──
-(function buildProducerLab(){
+try{(function buildProducerLab(){
   const zg=new THREE.Group();zg.position.set(0,0,-90);worldGroup.add(zg);
   // Warm hardwood floor
   const wfm=new THREE.MeshStandardMaterial({map:floorTex('#261606','rgba(60,30,0,.4)','rgba(255,160,80,.06)','wood'),roughness:.82,metalness:.04});
@@ -1586,10 +1600,10 @@ const zones=[];
       mGlow.intensity=3.5+Math.sin(t*1.2)*1.5+kick*2;psg.intensity=4+Math.sin(t*.8)*2;labAmb.intensity=2+Math.sin(t*.3)*.8;
     }
   };
-})();
+})();}catch(e){console.error('Zone build error [buildProducerLab]:',e);}
 
 // ── ZONE 4: Crown Hall ──
-(function buildCrownHall(){
+try{(function buildCrownHall(){
   const zg=new THREE.Group();zg.position.set(0,0,80);worldGroup.add(zg);
   // Royal marble floor with gold veins
   const cfm=new THREE.MeshStandardMaterial({map:floorTex('#0a0820','rgba(255,215,0,.18)','rgba(168,85,247,.06)','marble'),roughness:.06,metalness:.88,emissive:new THREE.Color(0x0d0820),emissiveIntensity:.4});
@@ -1657,7 +1671,7 @@ const zones=[];
       hallSpots.forEach((s,i)=>{s.intensity=34+Math.sin(t*.5+i)*.5*8;});lbGl.intensity=4+Math.sin(t*.6)*2;
     }
   };
-})();
+})();}catch(e){console.error('Zone build error [buildCrownHall]:',e);}
 
 // ── Connecting paths between zones ──
 const pathM=new THREE.MeshStandardMaterial({color:0x0d0820,roughness:.35,metalness:.5,emissive:0x0a0315,emissiveIntensity:.3});
@@ -1689,13 +1703,13 @@ signDefs.forEach(({pos,rot,label,col})=>{
 });
 
 // ── Shared starfield ──
-(function buildStars(){
+try{(function buildStars(){
   const geo=new THREE.BufferGeometry();const p=new Float32Array(2000*3);
   for(let i=0;i<2000;i++){p[i*3]=(Math.random()-.5)*500;p[i*3+1]=15+Math.random()*150;p[i*3+2]=(Math.random()-.5)*500;}
   geo.setAttribute('position',new THREE.BufferAttribute(p,3));
   const stars=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.22,transparent:true,opacity:.7,sizeAttenuation:true}));
   worldGroup.add(stars);
-})();
+})();}catch(e){console.error('Zone build error [buildStars]:',e);}
 
 // ════════════════════════════════════════════════
 //  MINIMAP
@@ -2225,7 +2239,7 @@ function updatePlayerAvatarInWorld() {
 }
 
 // Build the host NPC and place in Boombox Plaza
-(function buildHostNPC(){
+try{(function buildHostNPC(){
   const hostGroup = buildAvatarGroup(HOST_DEF, 1.15);
   hostGroup.position.set(-6, -2+1, -2);
   hostGroup.rotation.y = .4;
@@ -2255,7 +2269,7 @@ function updatePlayerAvatarInWorld() {
     hLight.intensity = 3.5 + Math.sin(t*1.2)*.8;
     tagMesh.lookAt(camera.position);
   };
-})();
+})();}catch(e){console.error('Zone build error [buildHostNPC]:',e);}
 
 // Animate player avatar head/bob each frame
 function animatePlayerAvatar(t) {
