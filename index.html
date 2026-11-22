@@ -6,8 +6,6 @@
 <title>Rap IQ City XR</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bangers&family=Inter:wght@400;700;900&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <style>
 :root{--gold:#FFD700;--purple:#A855F7;--cyan:#00D4FF;--pink:#FF3366;--green:#00FF88;color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1238,85 +1236,15 @@ function makeNPCSprite(skinHex,shirtCol,pantCol,opts){
   return {g,mesh:spriteMesh};
 }
 
-// ════════════════════════════════════════════════
-//  GLB CHARACTER LOADER
-// ════════════════════════════════════════════════
-let gltfLoader = null, dracoLoader = null;
-try {
-  if(typeof THREE.GLTFLoader === 'function') gltfLoader = new THREE.GLTFLoader();
-  if(typeof THREE.DRACOLoader === 'function'){
-    dracoLoader = new THREE.DRACOLoader();
-    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-    if(gltfLoader) gltfLoader.setDRACOLoader(dracoLoader);
-  }
-} catch(e){ console.warn('GLTFLoader/DRACOLoader unavailable:', e); }
-
-// GLB base URL — GitHub Pages serves them alongside index.html
-const GLB_BASE = (()=>{
-  const loc = typeof location !== 'undefined' ? location.href : '';
-  // If running on GitHub Pages, use that origin+path; otherwise use GH Pages directly
-  if(loc.includes('mrimagemakers.github.io')||loc.includes('github.io/RapIQCity')){
-    return loc.replace(/\/[^/]*$/,'/');
-  }
-  return 'https://mrimagemakers.github.io/RapIQCity/';
-})();
-
-// Map: character key → {path, group, loaded, callbacks[]}
-const GLB_CHARS = {
-  'rap-royalty': {path:GLB_BASE+'rap-royalty-city.glb', group:null, loaded:false, cbs:[]},
-  'queen-cipher':{path:GLB_BASE+'queen-cipher.glb',     group:null, loaded:false, cbs:[]},
-  'purple-crown':{path:GLB_BASE+'purple-crown-mc.glb',  group:null, loaded:false, cbs:[]},
-  'dj-blaze':    {path:GLB_BASE+'dj-blaze.glb',         group:null, loaded:false, cbs:[]},
-};
-
-function loadGLBChar(key, onLoad){
-  try {
-    const entry = GLB_CHARS[key];
-    if(!entry || !gltfLoader){if(onLoad)onLoad(null);return;}
-    if(entry.loaded){if(onLoad)onLoad(entry.group.clone());return;}
-    entry.cbs.push(onLoad);
-    if(entry.cbs.length>1)return; // already loading
-    gltfLoader.load(entry.path,
-      (gltf)=>{
-        try {
-          const g = gltf.scene;
-          const box=new THREE.Box3().setFromObject(g);
-          const ht=box.max.y-box.min.y;
-          const sc=2.0/Math.max(ht,0.01);
-          g.scale.setScalar(sc);
-          const box2=new THREE.Box3().setFromObject(g);
-          g.position.y=-box2.min.y;
-          g.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
-          entry.group=g;entry.loaded=true;
-          entry.cbs.forEach(cb=>{try{if(cb)cb(g.clone());}catch(e){}});
-          entry.cbs=[];
-        } catch(e){ console.warn('GLB process failed:',key,e); entry.cbs.forEach(cb=>{if(cb)cb(null);}); entry.cbs=[]; }
-      },
-      null,
-      (err)=>{console.warn('GLB load failed:',key,err);entry.cbs.forEach(cb=>{if(cb)cb(null);});entry.cbs=[];}
-    );
-  } catch(e){ console.warn('loadGLBChar error:',key,e); if(onLoad)onLoad(null); }
-}
-
-// Place a GLB character into a THREE.Group at a world position
-// Falls back to makePerson() while loading or on error
+// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═
+//  CHARACTER PLACEMENT
+// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═
 function placeGLBChar(key, position, rotation, fallbackFn, parentGroup){
-  try {
-    const placeholder = fallbackFn ? fallbackFn() : {g:new THREE.Group(),aL:null,aR:null,h:null};
-    placeholder.g.position.copy(position);
-    if(rotation!==undefined) placeholder.g.rotation.y = rotation;
-    parentGroup.add(placeholder.g);
-    loadGLBChar(key,(glbGroup)=>{
-      try {
-        if(!glbGroup)return;
-        glbGroup.position.copy(position);
-        if(rotation!==undefined) glbGroup.rotation.y = rotation;
-        parentGroup.remove(placeholder.g);
-        parentGroup.add(glbGroup);
-      } catch(e){}
-    });
-    return placeholder;
-  } catch(e){ console.warn('placeGLBChar error:',key,e); return {g:new THREE.Group()}; }
+  const char = fallbackFn ? fallbackFn() : {g:new THREE.Group()};
+  char.g.position.copy(position);
+  if(rotation !== undefined) char.g.rotation.y = rotation;
+  parentGroup.add(char.g);
+  return char;
 }
 
 // ════════════════════════════════════════════════
