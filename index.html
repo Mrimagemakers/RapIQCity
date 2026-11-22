@@ -1366,9 +1366,9 @@ try{(function buildPlaza(){
     ring.rotation.x=-Math.PI/2;ring.position.set(0,-1.93,0);ring.userData.baseOp=op;rings.push(ring);zg.add(ring);
   });
   // DJ character — GLB model (DJ Blaze Gold Inferno), fallback to makePerson
-  placeGLBChar('dj-blaze',
+  const dj=placeGLBChar('dj-blaze',
     new THREE.Vector3(-8,-1.85,2), Math.PI*.15,
-    ()=>{const dj=makePerson('#5a2e10','#0a0a0a','#111111');addHeadphones(dj.g);addCap(dj.g,0x000000);return dj;},
+    ()=>{const c=makePerson('#5a2e10','#0a0a0a','#111111');addHeadphones(c.g);addCap(c.g,0x000000);return c;},
     zg);
   // DJ table
   const tbl=new THREE.Mesh(new THREE.BoxGeometry(3.5,.12,2),new THREE.MeshStandardMaterial({color:0x1a0640,roughness:.25,metalness:.6,emissive:0x2a0860,emissiveIntensity:.5}));
@@ -1381,9 +1381,9 @@ try{(function buildPlaza(){
     const lbl=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.05,24),new THREE.MeshBasicMaterial({color:vi===0?0xffd700:0xa855f7}));lbl.position.set(-8+ox,-.145,2.5);zg.add(lbl);
   });
   // Host character — GLB model (Rap Royalty City), fallback to makePerson
-  placeGLBChar('rap-royalty',
+  const host=placeGLBChar('rap-royalty',
     new THREE.Vector3(8,-1.85,3.5), -Math.PI*.5,
-    ()=>{const host=makePerson('#7a4a2a','#111118','#0a0a14');addMic(host.g);return host;},
+    ()=>{const c=makePerson('#7a4a2a','#111118','#0a0a14');addMic(c.g);return c;},
     zg);
   // Host podium
   const pod=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,.9),new THREE.MeshStandardMaterial({color:0x14032a,roughness:.25,metalness:.6,emissive:0x200440,emissiveIntensity:.5}));
