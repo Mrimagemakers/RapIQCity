@@ -6,6 +6,8 @@
 <title>Rap IQ City XR</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bangers&family=Inter:wght@400;700;900&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <style>
 :root{--gold:#FFD700;--purple:#A855F7;--cyan:#00D4FF;--pink:#FF3366;--green:#00FF88;color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1270,11 +1272,56 @@ function makeNPCSprite(skinHex,shirtCol,pantCol,opts){
 const _billboardObjs=[];  // groups to face the camera
 const _bobObjs=[];        // groups that bob up/down
 
+// Set up GLTFLoader + DRACOLoader (used for real Meshy models)
+const _gltfLoader=(typeof THREE.GLTFLoader==='function') ? new THREE.GLTFLoader() : null;
+if(_gltfLoader && typeof THREE.DRACOLoader==='function'){
+  const _dracoLoader=new THREE.DRACOLoader();
+  _dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  _gltfLoader.setDRACOLoader(_dracoLoader);
+}
+const _GLB_BASE='https://mrimagemakers.github.io/RapIQCity/models/';
+const _GLB_MAP={
+  'dj-blaze':'dj-blaze.glb',
+  'queen-cipher':'queen-cipher.glb',
+  'purple-crown-mc':'purple-crown-mc.glb',
+  'rap-royalty-city':'rap-royalty-city.glb',
+};
+
 function placeGLBChar(key, position, rotation, fallbackFn, parentGroup){
+  // Always place the fallback character immediately so the scene is never empty
   const char = fallbackFn ? fallbackFn() : {g:new THREE.Group()};
   char.g.position.copy(position);
   if(rotation !== undefined) char.g.rotation.y = rotation;
   parentGroup.add(char.g);
+
+  // If GLTFLoader is available and we have a model for this key, load it async
+  // and swap it in when ready — replacing the fallback
+  if(_gltfLoader && _GLB_MAP[key]){
+    const url=_GLB_BASE+_GLB_MAP[key];
+    _gltfLoader.load(url, (gltf)=>{
+      const model=gltf.scene;
+      // Scale and position to match the fallback placeholder (makePerson is ~3.5 units tall)
+      const box=new THREE.Box3().setFromObject(model);
+      const size=new THREE.Vector3();box.getSize(size);
+      const scale=3.5/Math.max(size.x,size.y,size.z);
+      model.scale.setScalar(scale);
+      // Centre at floor level
+      const centre=new THREE.Vector3();box.getCenter(centre);
+      model.position.set(-centre.x*scale, -box.min.y*scale, -centre.z*scale);
+      // Shadows
+      model.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+      // Swap: remove fallback, add real model
+      parentGroup.remove(char.g);
+      const wrapper=new THREE.Group();
+      wrapper.add(model);
+      wrapper.position.copy(position);
+      if(rotation!==undefined) wrapper.rotation.y=rotation;
+      parentGroup.add(wrapper);
+    }, undefined, (err)=>{
+      // Load failed — fallback stays visible, log silently
+      console.warn('GLB load failed for',key,err.message||err);
+    });
+  }
   return char;
 }
 
