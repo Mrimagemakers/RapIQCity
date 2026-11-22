@@ -1248,12 +1248,22 @@ if(dracoLoader){
   if(gltfLoader) gltfLoader.setDRACOLoader(dracoLoader);
 }
 
+// GLB base URL — GitHub Pages serves them alongside index.html
+const GLB_BASE = (()=>{
+  const loc = typeof location !== 'undefined' ? location.href : '';
+  // If running on GitHub Pages, use that origin+path; otherwise use GH Pages directly
+  if(loc.includes('mrimagemakers.github.io')||loc.includes('github.io/RapIQCity')){
+    return loc.replace(/\/[^/]*$/,'/');
+  }
+  return 'https://mrimagemakers.github.io/RapIQCity/';
+})();
+
 // Map: character key → {path, group, loaded, callbacks[]}
 const GLB_CHARS = {
-  'rap-royalty': {path:'rap-royalty-city.glb', group:null, loaded:false, cbs:[]},
-  'queen-cipher':{path:'queen-cipher.glb',     group:null, loaded:false, cbs:[]},
-  'purple-crown':{path:'purple-crown-mc.glb',  group:null, loaded:false, cbs:[]},
-  'dj-blaze':    {path:'dj-blaze.glb',         group:null, loaded:false, cbs:[]},
+  'rap-royalty': {path:GLB_BASE+'rap-royalty-city.glb', group:null, loaded:false, cbs:[]},
+  'queen-cipher':{path:GLB_BASE+'queen-cipher.glb',     group:null, loaded:false, cbs:[]},
+  'purple-crown':{path:GLB_BASE+'purple-crown-mc.glb',  group:null, loaded:false, cbs:[]},
+  'dj-blaze':    {path:GLB_BASE+'dj-blaze.glb',         group:null, loaded:false, cbs:[]},
 };
 
 function loadGLBChar(key, onLoad){
