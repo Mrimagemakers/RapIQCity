@@ -863,6 +863,17 @@ function showCrownHall(){
 }
 
 // ════════════════════════════════════════════════
+//  ERROR OVERLAY (visible debug panel)
+// ════════════════════════════════════════════════
+const _errDiv=document.createElement('div');
+_errDiv.id='err-overlay';
+_errDiv.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(180,0,0,.92);color:#fff;padding:14px 20px;z-index:99999;font:13px/1.5 monospace;max-width:90vw;border-radius:8px;display:none;white-space:pre-wrap;max-height:60vh;overflow-y:auto';
+document.body.appendChild(_errDiv);
+function _showErr(msg){_errDiv.style.display='block';_errDiv.textContent+=msg+'\n';}
+window.addEventListener('error',e=>{_showErr('JS ERROR: '+e.message+'\n  at '+e.filename+':'+e.lineno);});
+window.addEventListener('unhandledrejection',e=>{_showErr('PROMISE: '+(e.reason&&e.reason.message||e.reason));});
+
+// ════════════════════════════════════════════════
 //  THREE.JS SETUP
 // ════════════════════════════════════════════════
 const canvas=document.getElementById('c');
@@ -1286,7 +1297,7 @@ try{(function buildSkyline(){
     const ne=new THREE.Mesh(new THREE.BoxGeometry(bw*.65,.06,.06),new THREE.MeshBasicMaterial({color:neonCols[Math.floor(Math.random()*5)]}));
     ne.position.set(bx,bh-2+.03,-54.6);worldGroup.add(ne);
   });
-})();}catch(e){console.error('Zone build error [buildSkyline]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildSkyline]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── ZONE 0: BoomBox Plaza (center) ──
 const zones=[];
@@ -1421,7 +1432,7 @@ try{(function buildPlaza(){
       crowdG.children.forEach(f=>{if(f.userData.fr)f.position.y+=Math.sin(t*f.userData.fr+f.userData.ph)*.004;});
     }
   };
-})();}catch(e){console.error('Zone build error [buildPlaza]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildPlaza]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── ZONE 1: Graffiti Alley ──
 try{(function buildGraffitiAlley(){
@@ -1475,7 +1486,7 @@ try{(function buildGraffitiAlley(){
       sg.intensity=3.5+Math.sin(t*1.8)*2;
     }
   };
-})();}catch(e){console.error('Zone build error [buildGraffitiAlley]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildGraffitiAlley]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── ZONE 2: Battle Arena ──
 try{(function buildBattleArena(){
@@ -1534,7 +1545,7 @@ try{(function buildBattleArena(){
       asg.intensity=4+Math.sin(t*.9)*2;
     }
   };
-})();}catch(e){console.error('Zone build error [buildBattleArena]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildBattleArena]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── ZONE 3: Producer Lab ──
 try{(function buildProducerLab(){
@@ -1600,7 +1611,7 @@ try{(function buildProducerLab(){
       mGlow.intensity=3.5+Math.sin(t*1.2)*1.5+kick*2;psg.intensity=4+Math.sin(t*.8)*2;labAmb.intensity=2+Math.sin(t*.3)*.8;
     }
   };
-})();}catch(e){console.error('Zone build error [buildProducerLab]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildProducerLab]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── ZONE 4: Crown Hall ──
 try{(function buildCrownHall(){
@@ -1671,7 +1682,7 @@ try{(function buildCrownHall(){
       hallSpots.forEach((s,i)=>{s.intensity=34+Math.sin(t*.5+i)*.5*8;});lbGl.intensity=4+Math.sin(t*.6)*2;
     }
   };
-})();}catch(e){console.error('Zone build error [buildCrownHall]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildCrownHall]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ── Connecting paths between zones ──
 const pathM=new THREE.MeshStandardMaterial({color:0x0d0820,roughness:.35,metalness:.5,emissive:0x0a0315,emissiveIntensity:.3});
@@ -1709,7 +1720,7 @@ try{(function buildStars(){
   geo.setAttribute('position',new THREE.BufferAttribute(p,3));
   const stars=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.22,transparent:true,opacity:.7,sizeAttenuation:true}));
   worldGroup.add(stars);
-})();}catch(e){console.error('Zone build error [buildStars]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildStars]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // ════════════════════════════════════════════════
 //  MINIMAP
@@ -2269,7 +2280,7 @@ try{(function buildHostNPC(){
     hLight.intensity = 3.5 + Math.sin(t*1.2)*.8;
     tagMesh.lookAt(camera.position);
   };
-})();}catch(e){console.error('Zone build error [buildHostNPC]:',e);}
+})();}catch(e){_showErr('ZONE ERR [buildHostNPC]: '+(e&&e.message||e)+'\n'+(e&&e.stack||''));}
 
 // Animate player avatar head/bob each frame
 function animatePlayerAvatar(t) {
