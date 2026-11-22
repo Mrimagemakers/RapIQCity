@@ -1256,14 +1256,20 @@ function makeNPCSprite(skinHex,shirtCol,pantCol,opts){
   const spriteMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1.5),spriteMat);
   const g=new THREE.Group();g.add(spriteMesh);
   spriteMesh.position.set(0,.75,0);
-  // billboard behavior — store reference for animate loop
+  // billboard behavior — register in pre-collected list
   g.userData.billboard=true;
+  _billboardObjs.push(g);
   return {g,mesh:spriteMesh};
 }
 
 // ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═
 //  CHARACTER PLACEMENT
 // ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═// ═
+
+// Pre-collected lists — avoids worldGroup.traverse() every frame
+const _billboardObjs=[];  // groups to face the camera
+const _bobObjs=[];        // groups that bob up/down
+
 function placeGLBChar(key, position, rotation, fallbackFn, parentGroup){
   const char = fallbackFn ? fallbackFn() : {g:new THREE.Group()};
   char.g.position.copy(position);
@@ -1404,6 +1410,8 @@ try{(function buildPlaza(){
     fig.g.scale.setScalar(scale);
     fig.g.position.set(-38+(Math.random()*76),-2,-10-row*4+(Math.random()-.5)*3);
     fig.g.userData.ph=Math.random()*Math.PI*2;fig.g.userData.fr=.6+Math.random()*.5;
+    fig.g.userData.baseY=fig.g.position.y;
+    _bobObjs.push(fig.g);
     crowdG.add(fig.g);
   }
   zg.add(crowdG);
@@ -2488,19 +2496,16 @@ renderer.setAnimationLoop(()=>{
   // Animate all zones (not just current — keeps things alive if they come into view)
   zones.forEach((z,i)=>{if(z&&z.anim)z.anim(t,kick);});
 
-  // Billboard — face all sprite NPC groups toward camera
-  worldGroup.traverse(obj=>{
-    if(obj.isGroup&&obj.userData&&obj.userData.billboard){
-      obj.lookAt(camera.position.x,obj.position.y,camera.position.z);
-    }
-  });
-  // Crowd bob for sprite NPCs
-  worldGroup.traverse(obj=>{
-    if(obj.isGroup&&obj.userData.fr!==undefined&&obj.userData.ph!==undefined&&obj.userData.billboard){
-      if(obj.userData.baseY===undefined)obj.userData.baseY=obj.position.y;
-      obj.position.y=obj.userData.baseY+Math.sin(t*obj.userData.fr+obj.userData.ph)*.05;
-    }
-  });
+  // Billboard — face sprite NPCs toward camera (pre-collected, no traverse)
+  for(let i=0;i<_billboardObjs.length;i++){
+    const obj=_billboardObjs[i];
+    obj.lookAt(camera.position.x,obj.position.y,camera.position.z);
+  }
+  // Crowd bob (pre-collected, no traverse)
+  for(let i=0;i<_bobObjs.length;i++){
+    const obj=_bobObjs[i];
+    obj.position.y=obj.userData.baseY+Math.sin(t*obj.userData.fr+obj.userData.ph)*.05;
+  }
 
   // Smooth camera transition
   if(transitioning){
