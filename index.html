@@ -6,6 +6,8 @@
 <title>Rap IQ City XR</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bangers&family=Inter:wght@400;700;900&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <style>
 :root{--gold:#FFD700;--purple:#A855F7;--cyan:#00D4FF;--pink:#FF3366;--green:#00FF88;color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1237,6 +1239,71 @@ function makeNPCSprite(skinHex,shirtCol,pantCol,opts){
 }
 
 // ════════════════════════════════════════════════
+//  GLB CHARACTER LOADER
+// ════════════════════════════════════════════════
+const gltfLoader = new THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
+const dracoLoader = (typeof THREE.DRACOLoader !== 'undefined') ? new THREE.DRACOLoader() : null;
+if(dracoLoader){
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  if(gltfLoader) gltfLoader.setDRACOLoader(dracoLoader);
+}
+
+// Map: character key → {path, group, loaded, callbacks[]}
+const GLB_CHARS = {
+  'rap-royalty': {path:'rap-royalty-city.glb', group:null, loaded:false, cbs:[]},
+  'queen-cipher':{path:'queen-cipher.glb',     group:null, loaded:false, cbs:[]},
+  'purple-crown':{path:'purple-crown-mc.glb',  group:null, loaded:false, cbs:[]},
+  'dj-blaze':    {path:'dj-blaze.glb',         group:null, loaded:false, cbs:[]},
+};
+
+function loadGLBChar(key, onLoad){
+  const entry = GLB_CHARS[key];
+  if(!entry || !gltfLoader){if(onLoad)onLoad(null);return;}
+  if(entry.loaded){if(onLoad)onLoad(entry.group.clone());return;}
+  entry.cbs.push(onLoad);
+  if(entry.cbs.length>1)return; // already loading
+  gltfLoader.load(entry.path,
+    (gltf)=>{
+      const g = gltf.scene;
+      // Normalize scale to ~2 units tall
+      const box=new THREE.Box3().setFromObject(g);
+      const ht=box.max.y-box.min.y;
+      const sc=2.0/Math.max(ht,0.01);
+      g.scale.setScalar(sc);
+      // Lift so feet are at y=0
+      const box2=new THREE.Box3().setFromObject(g);
+      g.position.y=-box2.min.y;
+      // Cast shadows
+      g.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+      entry.group=g;entry.loaded=true;
+      entry.cbs.forEach(cb=>{if(cb)cb(g.clone());});
+      entry.cbs=[];
+    },
+    null,
+    (err)=>{console.warn('GLB load failed:',key,err);entry.cbs.forEach(cb=>{if(cb)cb(null);});entry.cbs=[];}
+  );
+}
+
+// Place a GLB character into a THREE.Group at a world position
+// Falls back to makePerson() while loading or on error
+function placeGLBChar(key, position, rotation, fallbackFn, parentGroup){
+  const placeholder = fallbackFn ? fallbackFn() : {g:new THREE.Group(),aL:null,aR:null,h:null};
+  placeholder.g.position.copy(position);
+  if(rotation!==undefined) placeholder.g.rotation.y = rotation;
+  parentGroup.add(placeholder.g);
+
+  loadGLBChar(key,(glbGroup)=>{
+    if(!glbGroup)return; // keep fallback
+    glbGroup.position.copy(position);
+    if(rotation!==undefined) glbGroup.rotation.y = rotation;
+    parentGroup.remove(placeholder.g);
+    parentGroup.add(glbGroup);
+    placeholder.glbReplaced = glbGroup;
+  });
+  return placeholder;
+}
+
+// ════════════════════════════════════════════════
 //  WORLD BUILD
 // ════════════════════════════════════════════════
 const worldGroup=new THREE.Group();scene.add(worldGroup);
@@ -1323,8 +1390,11 @@ const zones=[];
     const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.06,10,80),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op}));
     ring.rotation.x=-Math.PI/2;ring.position.set(0,-1.93,0);ring.userData.baseOp=op;rings.push(ring);zg.add(ring);
   });
-  // DJ character
-  const dj=makePerson('#5a2e10','#0a0a0a','#111111');dj.g.position.set(-8,-1.85,2);addHeadphones(dj.g);addCap(dj.g,0x000000);zg.add(dj.g);
+  // DJ character — GLB model (DJ Blaze Gold Inferno), fallback to makePerson
+  placeGLBChar('dj-blaze',
+    new THREE.Vector3(-8,-1.85,2), Math.PI*.15,
+    ()=>{const dj=makePerson('#5a2e10','#0a0a0a','#111111');addHeadphones(dj.g);addCap(dj.g,0x000000);return dj;},
+    zg);
   // DJ table
   const tbl=new THREE.Mesh(new THREE.BoxGeometry(3.5,.12,2),new THREE.MeshStandardMaterial({color:0x1a0640,roughness:.25,metalness:.6,emissive:0x2a0860,emissiveIntensity:.5}));
   tbl.position.set(-8,-.3,2.4);zg.add(tbl);
@@ -1335,8 +1405,11 @@ const zones=[];
     v.position.set(-8+ox,-.17,2.5);zg.add(v);vinyls.push(v);
     const lbl=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.05,24),new THREE.MeshBasicMaterial({color:vi===0?0xffd700:0xa855f7}));lbl.position.set(-8+ox,-.145,2.5);zg.add(lbl);
   });
-  // Host character
-  const host=makePerson('#7a4a2a','#111118','#0a0a14');host.g.position.set(8,-1.85,3.5);addMic(host.g);zg.add(host.g);
+  // Host character — GLB model (Rap Royalty City), fallback to makePerson
+  placeGLBChar('rap-royalty',
+    new THREE.Vector3(8,-1.85,3.5), -Math.PI*.5,
+    ()=>{const host=makePerson('#7a4a2a','#111118','#0a0a14');addMic(host.g);return host;},
+    zg);
   // Host podium
   const pod=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,.9),new THREE.MeshStandardMaterial({color:0x14032a,roughness:.25,metalness:.6,emissive:0x200440,emissiveIntensity:.5}));
   pod.position.set(8,-1.0,3.5);zg.add(pod);
@@ -1460,9 +1533,15 @@ const zones=[];
   }
   // Battle circle glow
   const bcGlow=new THREE.PointLight(0x00d4ff,8,14);bcGlow.position.set(0,-1,0);zg.add(bcGlow);
-  // 2 battle rappers
-  const r1=makePerson('#5a2e10','#001a40','#0a0a1a');r1.g.position.set(-2.5,-1.85,0);r1.g.rotation.y=Math.PI*.5;addMic(r1.g);zg.add(r1.g);
-  const r2=makePerson('#8a4820','#400010','#1a0a0a');r2.g.position.set(2.5,-1.85,0);r2.g.rotation.y=-Math.PI*.5;addMic(r2.g);addCap(r2.g,0x880000);zg.add(r2.g);
+  // 2 battle rappers — GLB models (Queen of the Cipher vs Purple Crown MC)
+  placeGLBChar('queen-cipher',
+    new THREE.Vector3(-2.5,-1.85,0), Math.PI*.5,
+    ()=>{const r1=makePerson('#5a2e10','#001a40','#0a0a1a');addMic(r1.g);return r1;},
+    zg);
+  placeGLBChar('purple-crown',
+    new THREE.Vector3(2.5,-1.85,0), -Math.PI*.5,
+    ()=>{const r2=makePerson('#8a4820','#400010','#1a0a0a');addMic(r2.g);addCap(r2.g,0x880000);return r2;},
+    zg);
   // Bleachers (crowd) — sprite figures arranged in rings
   const arenaSkinTones=['#8B5E3C','#C68642','#FFD0A0','#5C3317','#A67B5B','#F1C27D'];
   const arenaShirts=['#001a40','#400010','#0a2a00','#2a0040','#402a00','#001a40'];
@@ -1622,6 +1701,11 @@ const zones=[];
   // Screen
   const hst=screenTex('CROWN HALL','RAP IQ CHAMPIONS','#FFD700');
   const hscr=new THREE.Mesh(new THREE.PlaneGeometry(10,4.5),new THREE.MeshBasicMaterial({map:hst}));hscr.position.set(0,12,-23);zg.add(hscr);
+  // Purple Crown MC — throne character center stage
+  placeGLBChar('purple-crown',
+    new THREE.Vector3(0,-1.85,-8), Math.PI,
+    ()=>{const king=makePerson('#4a2a7a','#2a0060','#1a0040');addCap(king.g,0xffd700);addMic(king.g);return king;},
+    zg);
 
   zones[4]={g:zg,pos:new THREE.Vector3(0,6,96),look:new THREE.Vector3(0,3,80),
     anim:(t)=>{
